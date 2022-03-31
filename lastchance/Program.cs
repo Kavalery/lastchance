@@ -1,49 +1,101 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 
 namespace lastchance
 {
+    [Serializable]
+    public class Port
+    {
+        public int PortNumber { get; set; }
+        public bool Res { get; set; }
+    }
+    [Serializable]
+    public class Host
+    {
+        public string HostName { get; set; }
+        public List<Port> Ports_list { get; set; }
+    }
+    
+    public class HostsL
+    {
+        public List<Host> Hosts_list = new List<Host>();
+    }
     public class Program
     {
-        static public List<int> Ports_list = new List<int>()
-        {
-        20,21,22,23,25,53,80,110,135,137,138,139,143,149,194,443,593,992,993,994,995,8000,8080,3128,3389,6588,1080,5900,8888,27015
-        };
-        static public List<string> IP_list = new List<string>()
-        {
-        "212.193.157.190","212.193.149.139"
-        };
+        //static  Host _host = new Host();
+
+        //static  Hosts hosts = new Hosts();
+        static public HostsL hostsL = new HostsL();
+
+        static public List<int> Ports_list = new List<int>() { 20, 21, 22, 23, 25, 53, 80, 110, 135, 137, 138, 139, 143, 149, 194, 443, 593, 992, 993, 994, 995, 8000, 8080, 3128, 3389, 6588, 1080, 5900, 8888, 27015 };
+
+        static public List<string> IP_list = new List<string>() { "212.193.157.190", "212.193.149.139" };
+
+
+
         static public void Add_port(int Port)
         {
             Ports_list.Add(Port);
-
         }
+        static public void AddRangeToHosts()
+        {
+            foreach (string Host in IP_list)
+            {
+                Host host = new Host();
+                host.HostName = Host;
+                List<Port> ports = new List<Port>();
+                host.Ports_list = ports;              
+                hostsL.Hosts_list.Add(host);
+            }
+        }
+        static public void Serial(HostsL _hosts)
+        {
+            XmlSerializer xmlSerializer = new XmlSerializer(typeof(HostsL));
+            using (FileStream fs = new FileStream("Hosts.xml", FileMode.OpenOrCreate))
+            {
+                xmlSerializer.Serialize(fs, _hosts);
+            }
+        }
+
         static void Main(string[] args)
         {
-            
 
+            AddRangeToHosts();
             string Type_scan;
             Console.WriteLine("Сканировать 30 самых популярных (введите 1) портов или все? (введите 2)");
 
             Type_scan = Console.ReadLine();
             if (Type_scan == "1")
             {
-                foreach (string _IP in IP_list)
-                {
-                    foreach (int _Port in Ports_list)
-                    {
-                        Scanport(_Port, _IP);
-                    }
-                }
-            }
 
+                foreach (Host _1host in hostsL.Hosts_list)
+                {
+                    Parallel.ForEach(Ports_list, i =>
+                    {
+                        Port _port = new Port();
+                        bool _res = Scanport(i, _1host.HostName);
+                        if (_res == true)
+                        {
+                            _port.PortNumber = i;
+                            _port.Res = true;
+                            _1host.Ports_list.Add(_port);
+                        }
+                        
+                    });
+                }
+                
+                Serial(hostsL); 
+                Console.WriteLine("Finally!");
+            }
             else
             if (Type_scan == "2")
             {
                 Ports_list.Clear();
-                for (int i = 1; i< 65537;i++)
+                for (int i = 1; i < 65537; i++)
                 {
                     Ports_list.Add(i);
                     //кринж ну ладно
@@ -53,10 +105,8 @@ namespace lastchance
                     foreach (int _Port in Ports_list)
                     {
                         Scanport(_Port, _IP);
-
                     }
                 }
-
             }
             else
             {
@@ -64,51 +114,29 @@ namespace lastchance
                 //todo
             }
 
-            
-
             Console.ReadLine();
         }
-        static public void Scanport(int Port, string Ip_addr)
+        static public bool Scanport(int Port, string Ip_addr)
         {
-            Task.Run(() =>
+            string rez = string.Empty;
+            Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            try
             {
-
-                Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                try
+                s.Connect(Ip_addr, Port);
+                rez = s.Connected.ToString();
+                if (rez == "True")
                 {
-                    s.Connect(Ip_addr, Port);
-                    string rez = s.Connected.ToString();
-                    if (rez == "True")
-                    {
-                        Console.WriteLine("Для IP = " + Ip_addr + " Порт " + Port + " открыт");
-
-                    }
+                    Console.WriteLine("Для IP = " + Ip_addr + " Порт " + Port + " открыт");
                 }
-                catch
-                {
-                    //Console.WriteLine("Для IP = " + Ip_addr + " Порт " + Port + " закрыт");
-                }
-               
-            });
-
-            //Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            //try
-            //{
-            //    string rez = s.Connected.ToString();
-            //    if (rez == "True")
-            //    {
-            //        Console.WriteLine("Порт " + Port + " открыт");
-            //    }
-            //}
-            //catch
-            //{
-            //    Console.WriteLine("Порт " + Port + " закрыт");
-            //}
-
-
-
-
-            //return Port;
+            }
+            catch
+            {
+            }
+            if (rez == "True")
+                return true;
+            else
+                return false;
         }
+
     }
 }
