@@ -35,7 +35,42 @@ namespace lastchance
 
         static public List<string> IP_list = new List<string>() { "212.193.157.190", "212.193.149.139" };
 
+        static public HostsL DeSerial(string path)
+        {
+            XmlSerializer xmlSerializer = new XmlSerializer(typeof(HostsL));
+            using (FileStream fs = new FileStream(path, FileMode.Open))
+            {
+                return (HostsL)xmlSerializer.Deserialize(fs);
+            }
+        }
 
+        static public void PrintInfo(HostsL hostsL)
+        {
+            foreach(Host host in hostsL.Hosts_list)
+            {
+                Console.WriteLine(" "+host.HostName);
+                foreach (Port port in host.Ports_list)
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine("   "+port.PortNumber);
+                }
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+        }
+        static public void ViewInfo()
+        {
+           string[] str=  Directory.GetFiles("_info/");
+            foreach (string str2 in str)
+            {
+               HostsL hosts = DeSerial(str2);
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine(str2);
+                Console.ForegroundColor = ConsoleColor.White;
+                PrintInfo(hosts);
+            }
+                
+            Console.ReadLine();
+        }
 
         static public void Add_port(int Port)
         {
@@ -56,7 +91,7 @@ namespace lastchance
         {
             string fileName= DateTime.Now.ToString("yyyy_MM_dd_HH_mm_ss")+".xml";
             XmlSerializer xmlSerializer = new XmlSerializer(typeof(HostsL));
-            using (FileStream fs = new FileStream(fileName, FileMode.OpenOrCreate))
+            using (FileStream fs = new FileStream("_info/"+fileName, FileMode.OpenOrCreate))
             {
                 xmlSerializer.Serialize(fs, _hosts);
             }
@@ -64,11 +99,11 @@ namespace lastchance
 
         static void Main(string[] args)
         {
-
+            Console.ForegroundColor = ConsoleColor.White;
             AddRangeToHosts();
             string Type_scan;
-            tryagain:
-            Console.WriteLine("Сканировать 30 самых популярных (введите 1) портов или все? (введите 2)");
+        tryagain:
+            Console.WriteLine("Сканировать 30 самых популярных (введите 1) портов или все? (введите 2)\nЧтобы просмотреть отчет о портах нажмите 3");
 
             Type_scan = Console.ReadLine();
             if (Type_scan == "1")
@@ -84,10 +119,10 @@ namespace lastchance
                             _port.PortNumber = i;
                             _port.Res = true;
                             _1host.Ports_list.Add(_port);
-                        }                        
+                        }
                     });
                 }
-                Serial(hostsL);  
+                Serial(hostsL);
             }
             else
             if (Type_scan == "2")
@@ -113,6 +148,10 @@ namespace lastchance
                     });
                 }
                 Serial(hostsL);
+            }
+            else if(Type_scan == "3")
+            {
+                ViewInfo();
             }
             else
             {
