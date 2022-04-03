@@ -122,7 +122,6 @@ namespace lastchance
             int i = 0;
             foreach (string str2 in str)
             {
-
                 Console.WriteLine(i + " " + str2);
                 i++;
             }
@@ -153,10 +152,6 @@ namespace lastchance
             ViewInfo();
         }
 
-        static public void Add_port(int Port)
-        {
-            Ports_list.Add(Port);
-        }
         static public void AddRangeToHosts()
         {
             foreach (string Host in IP_list)
@@ -165,7 +160,7 @@ namespace lastchance
                 host.HostName = Host;
                 List<Port> ports = new List<Port>();
                 host.Ports_list = ports;
-                hostsL.Hosts_list.Add(host);
+                //hostsL.Hosts_list.Add(host);
             }
         }
         static public void Serial(HostsL _hosts)
@@ -177,10 +172,8 @@ namespace lastchance
                 xmlSerializer.Serialize(fs, _hosts);
             }
         }
-
         static void Main(string[] args)
         {
-            //SomeMe();
             Console.ForegroundColor = ConsoleColor.White;
             AddRangeToHosts();
             string Type_scan;
@@ -190,33 +183,7 @@ namespace lastchance
             Type_scan = Console.ReadLine();
             if (Type_scan == "1")
             {
-                foreach (Host _1host in hostsL.Hosts_list)
-                {
-                    try
-                    {
-                        Ping ping = new Ping();
-                        PingReply pingReply;
-                        pingReply = ping.Send(_1host.HostName);
-                        if (pingReply.Status == IPStatus.Success)
-                        {
-                            Parallel.ForEach(Ports_list, i =>
-                            {
-                                Port _port = new Port();
-                                bool _res = Scanport(i, _1host.HostName);
-                                if (_res == true)
-                                {
-                                    _port.PortNumber = i;
-                                    _port.Res = true;
-                                    _1host.Ports_list.Add(_port);
-                                }
-                            });
-                        }
-                    }
-                    catch
-                    {
-
-                    }
-                }
+                TakeIpForeach();
                 Serial(hostsL);
             }
             else
@@ -226,36 +193,8 @@ namespace lastchance
                 for (int i = 1; i < 65537; i++)
                 {
                     Ports_list.Add(i);
-                    //кринж ну ладно
                 }
-                foreach (Host _1host in hostsL.Hosts_list)
-                {
-                    try
-                    {
-                        Ping ping = new Ping();
-                        PingReply pingReply;
-                        pingReply = ping.Send(_1host.HostName);
-                        if (pingReply.Status == IPStatus.Success)
-                        {
-                            Parallel.ForEach(Ports_list, i =>
-                            {
-                                Port _port = new Port();
-                                bool _res = Scanport(i, _1host.HostName);
-                                if (_res == true)
-                                {
-                                    _port.PortNumber = i;
-                                    _port.Res = true;
-                                    _1host.Ports_list.Add(_port);
-                                }
-                            });
-                        }
-                    }
-                    catch
-                    {
-
-                    }
-
-                }
+                TakeIpForeach();
                 Serial(hostsL);
             }
             else if (Type_scan == "3")
@@ -267,6 +206,7 @@ namespace lastchance
                 Console.Clear();
                 goto tryagain;
             }
+            //Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("Finally!");
             Console.ReadLine();
         }
@@ -291,5 +231,58 @@ namespace lastchance
             else
                 return false;
         }
+
+        static public void TakeIpForeach()
+        {
+            Parallel.ForEach(IP_list, Ip => { TakePortsForeach(Ip, Ports_list); });
+        }
+
+        static public void TakePortsForeach(string ip, List<int> port_list)
+        {
+            Ping ping = new Ping();
+            PingReply pingReply;
+
+            List<Port> _Port_list = new List<Port>();
+
+            Host _host = new Host();
+
+            _host.HostName = ip;
+
+            pingReply = ping.Send(ip);
+            if (pingReply.Status == IPStatus.Success)
+            {
+                Console.WriteLine(ip + " Online");
+                Parallel.ForEach(port_list, port =>
+                {
+                    Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                    try
+                    {
+                        Port _port = new Port();
+                        socket.Connect(ip, port);
+                        if (socket.Connected.ToString() == "True")
+                        {
+                            Console.WriteLine(ip + " Open " + port);
+                            _port.PortNumber = port;
+                            _port.Res = true;
+                            _Port_list.Add(_port);                            
+                            socket.Dispose();
+                        }
+                    }
+                    catch
+                    {
+                        socket.Dispose();
+                    }
+                });
+                _host.Ports_list = _Port_list;
+                hostsL.Hosts_list.Add(_host);
+            }
+            else
+            {
+                //Console.ForegroundColor = ConsoleColor.Red;
+                //Console.WriteLine(ip + " No Answer");
+                ping.Dispose();
+            }
+        }
+
     }
 }
